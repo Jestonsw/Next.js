@@ -148,7 +148,8 @@ const VenueCard = memo(function VenueCard({ venue, onClick }: VenueCardProps) {
           </span>
         </div>
       </div>
-            {/* Content */}
+
+      {/* Content */}
       <div className="p-4">
         {/* Title and Rating */}
         <div className="flex justify-between items-start mb-2">
@@ -204,6 +205,7 @@ const VenueCard = memo(function VenueCard({ venue, onClick }: VenueCardProps) {
               </div>
             )}
           </div>
+
 
         </div>
       </div>
