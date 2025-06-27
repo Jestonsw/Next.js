@@ -170,7 +170,9 @@ export default function HomePage() {
   const [events, setEvents] = useState<Event[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [venueCategories, setVenueCategories] = useState<VenueCategory[]>([])
+
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
+
   const [selectedDate, setSelectedDate] = useState<string>('')
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
@@ -178,6 +180,7 @@ export default function HomePage() {
   const [favorites, setFavorites] = useState<Set<number>>(new Set())
   const [showFavorites, setShowFavorites] = useState(false)
   const [showInfo, setShowInfo] = useState(false)
+
   const [activeTab, setActiveTab] = useState<'events' | 'venues'>('events')
   const [activeBottomTab, setActiveBottomTab] = useState<'etkinlikle' | 'bugun' | 'islemler' | 'kesfet' | 'profil' | 'etkinlik-oner' | 'mekan-oner' | 'arkadas-bul' | 'grup-kur'>('etkinlikle')
   const [showEventSubmissionModal, setShowEventSubmissionModal] = useState(false)
@@ -187,9 +190,11 @@ export default function HomePage() {
   const [isOffline, setIsOffline] = useState(false)
   const [usingCachedData, setUsingCachedData] = useState(false)
   const [venues, setVenues] = useState<Venue[]>([])
+
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null)
   const [selectedVenueCategory, setSelectedVenueCategory] = useState<string>('all')
   const [user, setUser] = useState<any>(null)
+
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null)
   const [showMembershipModal, setShowMembershipModal] = useState(false)
@@ -201,7 +206,7 @@ export default function HomePage() {
   const [startX, setStartX] = useState(0)
   const [scrollLeft, setScrollLeft] = useState(0)
   const [dragDistance, setDragDistance] = useState(0)
-  
+
 
   // Load user and initialize app
   useEffect(() => {
@@ -243,6 +248,7 @@ export default function HomePage() {
             
             if (categoriesResponse.ok) {
               const categoriesData = await categoriesResponse.json()
+
               setVenueCategories(categoriesData.categories || [])
             }
             
@@ -254,6 +260,7 @@ export default function HomePage() {
             console.error('Venues data yüklenirken hata:', error)
           }
         }
+
         
       } catch (error) {
         // App initialization failed, but don't crash
@@ -432,6 +439,7 @@ export default function HomePage() {
       setCategories(categoriesData)
       setEvents(eventsData)
       setUsingCachedData(false)
+
       
     } catch (error) {
       // Fallback to cached data if available
@@ -445,7 +453,8 @@ export default function HomePage() {
       }
     }
   }
-  
+
+
 
   const saveFavorites = async (newFavorites: Set<number>) => {
     // Update localStorage first for immediate UI feedback
@@ -633,10 +642,20 @@ export default function HomePage() {
     setShowInfo(!showInfo)
     setShowFavorites(false)
   }
-  
+
+
+
+
+
+
+
+
+
+
 
   // Show loading spinner after splash screen is done
   if (isLoading) {
+
     return (
       <div className="min-h-screen">
         <Header 
@@ -655,10 +674,12 @@ export default function HomePage() {
     )
   }
 
+
+
   // Main application
   return (
-    <div className="h-screen flex flex-col">
-      {/* Fixed Header Section */}
+        <div className="h-screen flex flex-col">
+          {/* Fixed Header Section */}
       <div className="flex-shrink-0">
         <div className="relative">
           <Header 
@@ -684,133 +705,135 @@ export default function HomePage() {
             <div className="container mx-auto px-4 py-3">
               <div className="flex flex-col gap-2">
             
-                {/* Category Strip */}
-                <div className="flex gap-2 mb-2">
+            
+            {/* Category Strip */}
+            <div className="flex gap-2 mb-2">
+              <button
+                onClick={async () => {
+                  setSelectedDate('')
+                  await handleCategoryChange('all')
+                }}
+                className={`flex-shrink-0 px-3 py-2 rounded-lg text-sm font-medium transition-colors min-w-[80px] h-[42px] flex items-center justify-center ${
+                  selectedCategory === 'all'
+                    ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                    : 'bg-blue-100 text-blue-700 hover:bg-blue-200 border border-blue-300'
+                }`}
+              >
+                <div className="flex items-center gap-1">
+                  <span className="text-sm">🌟</span>
+                  <span>{t('categories.all')}</span>
+                </div>
+              </button>
+              <div 
+                ref={categoryStripRef} 
+                className="overflow-x-auto scrollbar-hide flex-1 cursor-grab active:cursor-grabbing"
+                onWheel={handleHorizontalScroll}
+                onMouseDown={handleDragStart}
+                onMouseMove={handleDragMove}
+                onMouseUp={handleDragEnd}
+                onMouseLeave={handleDragEnd}
+                onTouchStart={handleDragStart}
+                onTouchMove={handleDragMove}
+                onTouchEnd={handleDragEnd}
+                style={{ touchAction: 'pan-x' }}
+              >
+                <div className="flex gap-2 min-w-max pb-2">
+                  {categories.map((category) => (
+                    <button
+                      key={category.id}
+                      onClick={() => handleCategoryChange(category.name)}
+                      className={`flex-shrink-0 px-3 py-2 rounded-lg text-sm font-medium transition-colors min-w-[80px] h-[42px] flex items-center justify-center ${
+                        selectedCategory === category.name
+                          ? 'bg-green-400 text-white'
+                          : 'bg-red-50 text-gray-700 hover:bg-red-100'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm">{getIconEmoji(category.icon)}</span>
+                        <span>{category.displayName}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex gap-2">
+              {/* Today's Date - Fixed */}
+              {(() => {
+                const today = new Date()
+                const todayStr = today.toISOString().split('T')[0]
+                const isSelected = selectedDate === todayStr
+                const isWeekend = today.getDay() === 0 || today.getDay() === 6 // 0 = Sunday, 6 = Saturday
+                
+                return (
                   <button
-                    onClick={async () => {
-                      setSelectedDate('')
-                      await handleCategoryChange('all')
-                    }}
-                    className={`flex-shrink-0 px-3 py-2 rounded-lg text-sm font-medium transition-colors min-w-[80px] h-[42px] flex items-center justify-center ${
-                      selectedCategory === 'all'
-                        ? 'bg-blue-100 text-blue-700 border border-blue-300'
-                        : 'bg-blue-100 text-blue-700 hover:bg-blue-200 border border-blue-300'
+                    onClick={() => setSelectedDate(todayStr)}
+                    className={`flex-shrink-0 px-3 py-2 rounded-lg text-sm transition-colors min-w-[80px] h-[42px] flex items-center justify-center ${
+                      isSelected 
+                        ? 'bg-green-400 text-white font-medium' 
+                        : isWeekend
+                        ? 'bg-blue-100 text-red-600 font-bold border border-blue-300'
+                        : 'bg-blue-100 text-blue-700 font-medium border border-blue-300'
                     }`}
                   >
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm">🌟</span>
-                      <span>{t('categories.all')}</span>
+                    <div className="text-center">
+                      <div className="text-xs font-bold">BUGÜN</div>
+                      <div className="text-xs">
+                        {today.getDate().toString().padStart(2, '0')} {
+                          ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'][today.getMonth()]
+                        }
+                      </div>
                     </div>
                   </button>
-                  <div 
-                    ref={categoryStripRef} 
-                    className="overflow-x-auto scrollbar-hide flex-1 cursor-grab active:cursor-grabbing"
-                    onWheel={handleHorizontalScroll}
-                    onMouseDown={handleDragStart}
-                    onMouseMove={handleDragMove}
-                    onMouseUp={handleDragEnd}
-                    onMouseLeave={handleDragEnd}
-                    onTouchStart={handleDragStart}
-                    onTouchMove={handleDragMove}
-                    onTouchEnd={handleDragEnd}
-                    style={{ touchAction: 'pan-x' }}
-                  >
-                    <div className="flex gap-2 min-w-max pb-2">
-                      {categories.map((category) => (
-                        <button
-                          key={category.id}
-                          onClick={() => handleCategoryChange(category.name)}
-                          className={`flex-shrink-0 px-3 py-2 rounded-lg text-sm font-medium transition-colors min-w-[80px] h-[42px] flex items-center justify-center ${
-                            selectedCategory === category.name
-                              ? 'bg-green-400 text-white'
-                              : 'bg-red-50 text-gray-700 hover:bg-red-100'
-                          }`}
-                        >
-                          <div className="flex items-center gap-1">
-                            <span className="text-sm">{getIconEmoji(category.icon)}</span>
-                            <span>{category.displayName}</span>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex gap-2">
-                  {/* Today's Date - Fixed */}
-                  {(() => {
-                    const today = new Date()
-                    const todayStr = today.toISOString().split('T')[0]
-                    const isSelected = selectedDate === todayStr
-                    const isWeekend = today.getDay() === 0 || today.getDay() === 6
+                )
+              })()}
+              
+              {/* Future Dates - Scrollable */}
+              <div 
+                ref={dateStripRef} 
+                className="overflow-x-auto scrollbar-hide flex-1 cursor-grab active:cursor-grabbing"
+                onWheel={handleHorizontalScroll}
+                onMouseDown={handleDragStart}
+                onMouseMove={handleDragMove}
+                onMouseUp={handleDragEnd}
+                onMouseLeave={handleDragEnd}
+                onTouchStart={handleDragStart}
+                onTouchMove={handleDragMove}
+                onTouchEnd={handleDragEnd}
+                style={{ touchAction: 'pan-x' }}
+              >
+                <div className="flex gap-2 min-w-max pb-2">
+                  {Array.from({ length: 30 }, (_, index) => {
+                    const date = new Date()
+                    date.setDate(date.getDate() + 1 + index) // Start from tomorrow
+                    const dateStr = date.toISOString().split('T')[0]
+                    const isSelected = selectedDate === dateStr
+                    const isWeekend = date.getDay() === 0 || date.getDay() === 6 // 0 = Sunday, 6 = Saturday
                     
                     return (
                       <button
-                        onClick={() => setSelectedDate(todayStr)}
-                        className={`flex-shrink-0 px-3 py-2 rounded-lg text-sm transition-colors min-w-[80px] h-[42px] flex items-center justify-center ${
+                        key={dateStr}
+                        onClick={async () => {
+                          console.log('Date changed to:', dateStr, 'for category:', selectedCategory)
+                          setSelectedDate(dateStr)
+                          await loadData(selectedCategory, dateStr)
+                        }}
+                        className={`flex-shrink-0 px-3 py-2 rounded-lg text-sm transition-colors min-w-[80px] h-[42px] flex items-center justify-center border ${
                           isSelected 
-                            ? 'bg-green-400 text-white font-medium' 
+                            ? 'bg-green-400 text-white font-medium border-green-400' 
                             : isWeekend
-                            ? 'bg-blue-100 text-red-600 font-bold border border-blue-300'
-                            : 'bg-blue-100 text-blue-700 font-medium border border-blue-300'
+                            ? 'bg-red-50 text-red-600 font-bold hover:bg-red-100 border-black'
+                            : 'bg-red-50 text-gray-700 font-medium hover:bg-red-100 border-black'
                         }`}
                       >
-                        <div className="text-center">
-                          <div className="text-xs font-bold">BUGÜN</div>
-                          <div className="text-xs">
-                            {today.getDate().toString().padStart(2, '0')} {
-                              ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'][today.getMonth()]
-                            }
-                          </div>
-                        </div>
+                        {formatDate(date, language)}
                       </button>
                     )
-                  })()}
-                  
-                  {/* Future Dates - Scrollable */}
-                  <div 
-                    ref={dateStripRef} 
-                    className="overflow-x-auto scrollbar-hide flex-1 cursor-grab active:cursor-grabbing"
-                    onWheel={handleHorizontalScroll}
-                    onMouseDown={handleDragStart}
-                    onMouseMove={handleDragMove}
-                    onMouseUp={handleDragEnd}
-                    onMouseLeave={handleDragEnd}
-                    onTouchStart={handleDragStart}
-                    onTouchMove={handleDragMove}
-                    onTouchEnd={handleDragEnd}
-                    style={{ touchAction: 'pan-x' }}
-                  >
-                    <div className="flex gap-2 min-w-max pb-2">
-                      {Array.from({ length: 30 }, (_, index) => {
-                        const date = new Date()
-                        date.setDate(date.getDate() + 1 + index)
-                        const dateStr = date.toISOString().split('T')[0]
-                        const isSelected = selectedDate === dateStr
-                        const isWeekend = date.getDay() === 0 || date.getDay() === 6
-                        
-                        return (
-                          <button
-                            key={dateStr}
-                            onClick={async () => {
-                              setSelectedDate(dateStr)
-                              await loadData(selectedCategory, dateStr)
-                            }}
-                            className={`flex-shrink-0 px-3 py-2 rounded-lg text-sm transition-colors min-w-[80px] h-[42px] flex items-center justify-center border ${
-                              isSelected 
-                                ? 'bg-green-400 text-white font-medium border-green-400' 
-                                : isWeekend
-                                ? 'bg-red-50 text-red-600 font-bold hover:bg-red-100 border-black'
-                                : 'bg-red-50 text-gray-700 font-medium hover:bg-red-100 border-black'
-                            }`}
-                          >
-                            {formatDate(date, language)}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
+                  })}
                 </div>
+              </div>
+            </div>
               </div>
             </div>
           </section>
@@ -826,12 +849,12 @@ export default function HomePage() {
                   onClick={() => setSelectedVenueCategory('all')}
                   className={`flex-shrink-0 px-3 py-2 rounded-lg text-sm font-medium transition-colors min-w-[80px] h-[48px] flex items-center justify-center ${
                     selectedVenueCategory === 'all'
-                      ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                      ? 'bg-green-400 text-white'
                       : 'bg-blue-100 text-blue-700 hover:bg-blue-200 border border-blue-300'
                   }`}
                 >
                   <div className="flex items-center gap-1">
-                    <span className="text-sm">🌟</span>
+                    <span className="text-sm">🏢</span>
                     <span>Tümü</span>
                   </div>
                 </button>
@@ -850,6 +873,7 @@ export default function HomePage() {
                   style={{ touchAction: 'pan-x' }}
                 >
                   <div className="flex gap-2 min-w-max pb-1">
+
                     {venueCategories.map((category) => (
                       <button
                         key={category.id}
@@ -1025,14 +1049,17 @@ export default function HomePage() {
             }}
             className={`flex flex-col items-center p-2 transition-colors ${
               activeBottomTab === 'etkinlik-oner'
-                ? 'text-blue-600' 
+                ? 'text-green-600' 
                 : 'text-gray-500'
             }`}
           >
-            <Plus className="w-5 h-5 mb-1" />
+            <div className="relative">
+              <Calendar className="w-4 h-4 mb-1" />
+              <Plus className="w-2 h-2 absolute -top-1 -right-1 text-green-500" />
+            </div>
             <span className="text-xs font-medium">Etkinlik Ekle</span>
           </button>
-          
+
           <button
             onClick={() => {
               requireAuth(() => {
@@ -1112,6 +1139,8 @@ export default function HomePage() {
           </button>
         </div>
       </div>
+
+
 
       {/* Info Modal */}
       {showInfo && (
@@ -1226,6 +1255,8 @@ export default function HomePage() {
           />
         </Suspense>
       )}
+
+
 
       {/* Announcement Popup */}
       <Suspense fallback={null}>
