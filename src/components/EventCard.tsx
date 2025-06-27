@@ -118,7 +118,7 @@ const EventCard = memo(function EventCard({ event, category, isFavorite, onFavor
       onClick={onEventClick}
     >
       <div className="flex">
-                <div className="relative w-28 sm:w-32 h-20 sm:h-24 flex-shrink-0 p-1.5">
+        <div className="relative w-28 sm:w-32 h-20 sm:h-24 flex-shrink-0 p-1.5">
           {event.imageUrl && !imageError ? (
             <img
               key={`img-${event.id}-${event.imageUrl}`}
@@ -229,8 +229,10 @@ const EventCard = memo(function EventCard({ event, category, isFavorite, onFavor
             </div>
           </div>
 
+
         </div>
       </div>
+
 
     </div>
   )
