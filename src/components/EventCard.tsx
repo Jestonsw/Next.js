@@ -61,6 +61,8 @@ const EventCard = memo(function EventCard({ event, category, isFavorite, onFavor
   const { t, translateText } = useLanguage()
   const [imageError, setImageError] = useState(false)
   
+  // Mobile gesture states removed
+  
   // Check if running on custom domain and get proper image source
   const [isCustomDomain, setIsCustomDomain] = useState(false)
   
@@ -72,10 +74,15 @@ const EventCard = memo(function EventCard({ event, category, isFavorite, onFavor
   }, [])
   
   const getImageSrc = (imageUrl: string) => {
-    if (isCustomDomain && imageUrl.startsWith('/uploads/')) {
-      return `https://edirne-events.replit.app${imageUrl}?t=${Date.now()}`
+    // FORCE ALL UPLOADS to load from replit.app regardless of domain
+    if (imageUrl.startsWith('/uploads/')) {
+      const timestamp = Date.now()
+      const random = Math.floor(Math.random() * 1000000)
+      const replitUrl = `https://edirne-events.replit.app${imageUrl}?t=${timestamp}&r=${random}&nocache=1&force=true`
+      console.log(`🔧 FORCE LOADING: Event ${event.id} from ${replitUrl}`)
+      return replitUrl
     }
-    return `${imageUrl}?fixed=${Date.now()}`
+    return `${imageUrl}?v=${Date.now()}`
   }
   
   const handleImageError = useCallback(() => {
@@ -87,6 +94,8 @@ const EventCard = memo(function EventCard({ event, category, isFavorite, onFavor
     console.log(`✅ FINAL SUCCESS: Event ${event.id} - ${event.imageUrl}`)
     setImageError(false)
   }, [event.id, event.imageUrl])
+
+
 
   // Safe date parsing with fallbacks
   let startDate: Date
@@ -122,11 +131,11 @@ const EventCard = memo(function EventCard({ event, category, isFavorite, onFavor
 
   return (
     <div 
-      className="bg-white rounded-lg border border-gray-200 hover:shadow-md transition-shadow cursor-pointer" 
+      className="bg-white rounded-lg border border-gray-200 hover:shadow-md transition-all duration-200 cursor-pointer select-none" 
       onClick={onEventClick}
     >
       <div className="flex">
-        <div className="relative w-28 sm:w-32 h-20 sm:h-24 flex-shrink-0 p-1.5">
+        <div className="relative w-28 sm:w-32 h-28 sm:h-28 flex-shrink-0 p-1.5">
           {event.imageUrl && !imageError ? (
             <img
               key={`domain-${event.id}-${Date.now()}`}
@@ -160,7 +169,7 @@ const EventCard = memo(function EventCard({ event, category, isFavorite, onFavor
           )}
         </div>
 
-        <div className="flex-1 p-3 flex flex-col justify-between min-h-[96px]">
+        <div className="flex-1 p-3 flex flex-col justify-between min-h-[112px] sm:min-h-[96px]">
           <div>
             <div className="flex items-start justify-between mb-2">
               <h3 className="text-sm font-semibold text-gray-900 line-clamp-2 leading-tight">
