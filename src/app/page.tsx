@@ -439,7 +439,8 @@ export default function HomePage() {
       setCategories(categoriesData)
       setEvents(eventsData)
       setUsingCachedData(false)
-
+      
+      return eventsData // Return loaded events for preloading
       
     } catch (error) {
       // Fallback to cached data if available
@@ -450,7 +451,9 @@ export default function HomePage() {
         setCategories(cachedCategories)
         setEvents(cachedEvents)
         setUsingCachedData(true)
+        return cachedEvents // Return cached events for preloading
       }
+      return []
     }
   }
 
@@ -545,16 +548,59 @@ export default function HomePage() {
     }
   }, [selectedVenueCategory, activeTab])
 
-  // Periodic refresh for venues to catch admin approvals
-  useEffect(() => {
-    if (activeTab === 'venues') {
-      const interval = setInterval(() => {
-        loadVenues()
-      }, 30000) // Refresh every 30 seconds when on venues tab
-
-      return () => clearInterval(interval)
+  // Preload all admin images for cross-domain compatibility  
+  const preloadAdminImages = useCallback(async (events: any[]) => {
+    const adminImages = events
+      .filter(event => event.imageUrl?.startsWith('/uploads/'))
+      .map(event => event.imageUrl)
+    
+    console.log(`🖼️ Preloading ${adminImages.length} admin images for cross-domain access...`)
+    
+    for (const imageUrl of adminImages) {
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      const timestamp = Date.now()
+      const random = Math.floor(Math.random() * 1000000)
+      img.src = `https://edirne-events.replit.app${imageUrl}?t=${timestamp}&r=${random}&nocache=1&preload=true`
+      
+      img.onload = () => console.log(`✅ PRELOADED: ${imageUrl}`)
+      img.onerror = () => console.log(`❌ PRELOAD FAILED: ${imageUrl}`)
     }
-  }, [activeTab])
+  }, [])
+
+  // Real-time refresh system for admin changes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Refresh events every 5 seconds to catch admin additions instantly
+      if (activeTab === 'events') {
+        console.log('🔄 Auto-refreshing events for admin updates...')
+        loadData(selectedCategory, selectedDate).then((loadedEvents) => {
+          if (loadedEvents && Array.isArray(loadedEvents) && loadedEvents.length > 0) {
+            preloadAdminImages(loadedEvents)
+          }
+        })
+      }
+      // Refresh venues every 30 seconds when on venues tab
+      if (activeTab === 'venues') {
+        loadVenues()
+      }
+    }, 5000) // Check every 5 seconds for faster updates
+
+    return () => clearInterval(interval)
+  }, [activeTab, selectedCategory, selectedDate, preloadAdminImages])
+
+  // Force immediate refresh when component mounts or admin adds events
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && activeTab === 'events') {
+        console.log('🔄 Page visible - force refresh for admin updates')
+        loadData(selectedCategory, selectedDate)
+      }
+    }
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [activeTab, selectedCategory, selectedDate])
 
   // Optimize filtering with useMemo - API already handles category and date filtering
   const filteredEvents = useMemo(() => {
