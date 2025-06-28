@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react'
 import { Calendar, Search, MapPin, Clock, Users, Star, Filter, Heart, Home, User, Map, Plus, UserPlus } from 'lucide-react'
 import Header from '@/components/Header'
-import EventCard from '@/components/EventCard'
+import EventCard from '@/components/EventCard_new'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
 import OfflineIndicator from '@/components/OfflineIndicator'
@@ -548,46 +548,51 @@ export default function HomePage() {
     }
   }, [selectedVenueCategory, activeTab])
 
-  // Preload all admin images for cross-domain compatibility  
-  const preloadAdminImages = useCallback(async (events: any[]) => {
-    const adminImages = events
-      .filter(event => event.imageUrl?.startsWith('/uploads/'))
-      .map(event => event.imageUrl)
-    
-    console.log(`🖼️ Preloading ${adminImages.length} admin images for cross-domain access...`)
-    
-    for (const imageUrl of adminImages) {
-      const img = new Image()
-      img.crossOrigin = 'anonymous'
-      const timestamp = Date.now()
-      const random = Math.floor(Math.random() * 1000000)
-      img.src = `https://edirne-events.replit.app${imageUrl}?t=${timestamp}&r=${random}&nocache=1&preload=true`
-      
-      img.onload = () => console.log(`✅ PRELOADED: ${imageUrl}`)
-      img.onerror = () => console.log(`❌ PRELOAD FAILED: ${imageUrl}`)
-    }
-  }, [])
+  // No more preloading - using intelligent cache system instead
 
-  // Real-time refresh system for admin changes
+  // Smart sync system - only refresh when changes detected
   useEffect(() => {
-    const interval = setInterval(() => {
-      // Refresh events every 5 seconds to catch admin additions instantly
-      if (activeTab === 'events') {
-        console.log('🔄 Auto-refreshing events for admin updates...')
-        loadData(selectedCategory, selectedDate).then((loadedEvents) => {
-          if (loadedEvents && Array.isArray(loadedEvents) && loadedEvents.length > 0) {
-            preloadAdminImages(loadedEvents)
+    let lastEventCount = events.length
+    let lastVenueCount = venues.length
+    
+    const interval = setInterval(async () => {
+      try {
+        if (activeTab === 'events') {
+          // Quick check for event changes
+          const response = await fetch(`/api/events?count=true&category=${selectedCategory || ''}&date=${selectedDate || ''}&t=${Date.now()}`)
+          if (response.ok) {
+            const { count } = await response.json()
+            
+            // Only reload if count changed
+            if (count !== lastEventCount) {
+              console.log(`🔄 SMART SYNC: Event changes detected (${lastEventCount} → ${count}), reloading...`)
+              await loadData(selectedCategory, selectedDate)
+              lastEventCount = count
+            }
           }
-        })
+        }
+        
+        if (activeTab === 'venues') {
+          // Quick check for venue changes  
+          const response = await fetch(`/api/venues?count=true&t=${Date.now()}`)
+          if (response.ok) {
+            const { count } = await response.json()
+            
+            // Only reload if count changed
+            if (count !== lastVenueCount) {
+              console.log(`🔄 SMART SYNC: Venue changes detected (${lastVenueCount} → ${count}), reloading...`)
+              await loadVenues()
+              lastVenueCount = count
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Smart sync error:', error)
       }
-      // Refresh venues every 30 seconds when on venues tab
-      if (activeTab === 'venues') {
-        loadVenues()
-      }
-    }, 5000) // Check every 5 seconds for faster updates
+    }, 3000) // Check every 3 seconds, but only reload when needed
 
     return () => clearInterval(interval)
-  }, [activeTab, selectedCategory, selectedDate, preloadAdminImages])
+  }, [activeTab, selectedCategory, selectedDate, events.length, venues.length])
 
   // Force immediate refresh when component mounts or admin adds events
   useEffect(() => {
@@ -724,7 +729,7 @@ export default function HomePage() {
 
   // Main application
   return (
-        <div className="h-screen flex flex-col">
+    <div className="h-screen flex flex-col">
           {/* Fixed Header Section */}
       <div className="flex-shrink-0">
         <div className="relative">
@@ -976,19 +981,16 @@ export default function HomePage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {filteredEvents.map((event) => {
-                    const eventCategory = categories.find(c => c.id === event.categoryId)
-                    return (
-                      <EventCard
-                        key={`stable-${event.id}`}
-                        event={event}
-                        category={eventCategory}
-                        isFavorite={favorites.has(event.id)}
-                        onFavoriteToggle={() => toggleFavorite(event.id)}
-                        onEventClick={() => setSelectedEvent(event)}
-                      />
-                    )
-                  })}
+                {filteredEvents.map((event) => (
+                  <EventCard
+                    key={`stable-${event.id}`}
+                    event={event}
+                    categories={categories}
+                    isFavorite={favorites.has(event.id)}
+                    onFavoriteToggle={() => toggleFavorite(event.id)}
+                    onEventClick={() => setSelectedEvent(event)}
+                  />
+                ))}
               </div>
             )
           ) : (
