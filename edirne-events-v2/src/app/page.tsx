@@ -439,7 +439,8 @@ export default function HomePage() {
       setCategories(categoriesData)
       setEvents(eventsData)
       setUsingCachedData(false)
-
+      
+      return eventsData // Return loaded events for preloading
       
     } catch (error) {
       // Fallback to cached data if available
@@ -450,7 +451,9 @@ export default function HomePage() {
         setCategories(cachedCategories)
         setEvents(cachedEvents)
         setUsingCachedData(true)
+        return cachedEvents // Return cached events for preloading
       }
+      return []
     }
   }
 
@@ -545,16 +548,64 @@ export default function HomePage() {
     }
   }, [selectedVenueCategory, activeTab])
 
-  // Periodic refresh for venues to catch admin approvals
-  useEffect(() => {
-    if (activeTab === 'venues') {
-      const interval = setInterval(() => {
-        loadVenues()
-      }, 30000) // Refresh every 30 seconds when on venues tab
+  // No more preloading - using intelligent cache system instead
 
-      return () => clearInterval(interval)
+  // Smart sync system - only refresh when changes detected
+  useEffect(() => {
+    let lastEventCount = events.length
+    let lastVenueCount = venues.length
+    
+    const interval = setInterval(async () => {
+      try {
+        if (activeTab === 'events') {
+          // Quick check for event changes
+          const response = await fetch(`/api/events?count=true&category=${selectedCategory || ''}&date=${selectedDate || ''}&t=${Date.now()}`)
+          if (response.ok) {
+            const { count } = await response.json()
+            
+            // Only reload if count changed
+            if (count !== lastEventCount) {
+              console.log(`🔄 SMART SYNC: Event changes detected (${lastEventCount} → ${count}), reloading...`)
+              await loadData(selectedCategory, selectedDate)
+              lastEventCount = count
+            }
+          }
+        }
+        
+        if (activeTab === 'venues') {
+          // Quick check for venue changes  
+          const response = await fetch(`/api/venues?count=true&t=${Date.now()}`)
+          if (response.ok) {
+            const { count } = await response.json()
+            
+            // Only reload if count changed
+            if (count !== lastVenueCount) {
+              console.log(`🔄 SMART SYNC: Venue changes detected (${lastVenueCount} → ${count}), reloading...`)
+              await loadVenues()
+              lastVenueCount = count
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Smart sync error:', error)
+      }
+    }, 3000) // Check every 3 seconds, but only reload when needed
+
+    return () => clearInterval(interval)
+  }, [activeTab, selectedCategory, selectedDate, events.length, venues.length])
+
+  // Force immediate refresh when component mounts or admin adds events
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && activeTab === 'events') {
+        console.log('🔄 Page visible - force refresh for admin updates')
+        loadData(selectedCategory, selectedDate)
+      }
     }
-  }, [activeTab])
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [activeTab, selectedCategory, selectedDate])
 
   // Optimize filtering with useMemo - API already handles category and date filtering
   const filteredEvents = useMemo(() => {
@@ -678,7 +729,7 @@ export default function HomePage() {
 
   // Main application
   return (
-        <div className="h-screen flex flex-col">
+    <div className="h-screen flex flex-col">
           {/* Fixed Header Section */}
       <div className="flex-shrink-0">
         <div className="relative">
@@ -854,8 +905,8 @@ export default function HomePage() {
                   }`}
                 >
                   <div className="flex items-center gap-1">
-                    <span className="text-sm">🏢</span>
-                    <span>Tümü</span>
+                    <div className="text-sm">🏢</div>
+                    <div>Tümü</div>
                   </div>
                 </button>
                 
@@ -889,7 +940,7 @@ export default function HomePage() {
                             : category.color + '20'
                         }}
                       >
-                        <span className="text-xs mb-1">{getIconEmoji(category.icon)}</span>
+                        <div className="text-xs mb-1">{getIconEmoji(category.icon)}</div>
                         <div className="text-xs leading-tight text-center">
                           {category.displayName.split(' ').map((word, index) => (
                             <div key={index} className="whitespace-nowrap">
@@ -930,19 +981,16 @@ export default function HomePage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {filteredEvents.map((event) => {
-                    const eventCategory = categories.find(c => c.id === event.categoryId)
-                    return (
-                      <EventCard
-                        key={`stable-${event.id}`}
-                        event={event}
-                        category={eventCategory}
-                        isFavorite={favorites.has(event.id)}
-                        onFavoriteToggle={() => toggleFavorite(event.id)}
-                        onEventClick={() => setSelectedEvent(event)}
-                      />
-                    )
-                  })}
+                {filteredEvents.map((event) => (
+                  <EventCard
+                    key={`stable-${event.id}`}
+                    event={event}
+                    category={categories.find(cat => cat.id === event.categoryId)}
+                    isFavorite={favorites.has(event.id)}
+                    onFavoriteToggle={() => toggleFavorite(event.id)}
+                    onEventClick={() => setSelectedEvent(event)}
+                  />
+                ))}
               </div>
             )
           ) : (
