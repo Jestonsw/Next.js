@@ -133,6 +133,7 @@ Changelog:
 - June 29, 2025. Initial setup
 - June 29, 2025. Fixed interactive map display issue - added dynamic Leaflet CSS loading, optimized container sizing, resolved tile rendering problems in modals
 - June 29, 2025. Completed admin approval system overhaul - simplified workflow with single "İncele ve Onayla" button, fixed API date handling, resolved image rendering for approved events
+- June 29, 2025. GitHub repository fully synchronized - all admin approval system updates uploaded, including API fixes, EventCard improvements, and documentation updates
 ```
 
 ## User Preferences
