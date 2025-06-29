@@ -57,11 +57,19 @@ interface EventCardProps {
   onEventClick: () => void
 }
 
+// Image cache to prevent repeated loading
+const imageCache = new Map<string, string>()
+
+// Clear cache when component reloads (for development)
+if (typeof window !== 'undefined') {
+  imageCache.clear()
+  console.log('🔄 Image cache cleared')
+}
+
 const EventCard = memo(function EventCard({ event, category, isFavorite, onFavoriteToggle, onEventClick }: EventCardProps) {
   const { t, translateText } = useLanguage()
   const [imageError, setImageError] = useState(false)
-  
-  // Mobile gesture states removed
+  const [cachedImageSrc, setCachedImageSrc] = useState<string | null>(null)
   
   // Check if running on custom domain and get proper image source
   const [isCustomDomain, setIsCustomDomain] = useState(false)
@@ -73,17 +81,34 @@ const EventCard = memo(function EventCard({ event, category, isFavorite, onFavor
     }
   }, [])
   
-  const getImageSrc = (imageUrl: string) => {
-    // FORCE ALL UPLOADS to load from replit.app regardless of domain
-    if (imageUrl.startsWith('/uploads/')) {
-      const timestamp = Date.now()
-      const random = Math.floor(Math.random() * 1000000)
-      const replitUrl = `https://edirne-events.replit.app${imageUrl}?t=${timestamp}&r=${random}&nocache=1&force=true`
-      console.log(`🔧 FORCE LOADING: Event ${event.id} from ${replitUrl}`)
-      return replitUrl
+  const getImageSrc = useCallback((imageUrl: string) => {
+    // Check cache first
+    const cacheKey = `${imageUrl}_${event.id}`
+    if (imageCache.has(cacheKey)) {
+      return imageCache.get(cacheKey)!
     }
-    return `${imageUrl}?v=${Date.now()}`
-  }
+    
+    // Use local serve-image API for uploads
+    if (imageUrl.startsWith('/uploads/')) {
+      const filename = imageUrl.split('/').pop()
+      const localUrl = `/api/serve-image/${filename}?t=${Date.now()}`
+      imageCache.set(cacheKey, localUrl)
+      console.log(`🎯 CACHED: Event ${event.id} - ${localUrl}`)
+      return localUrl
+    }
+    
+    const finalUrl = `${imageUrl}?v=${Date.now()}`
+    imageCache.set(cacheKey, finalUrl)
+    return finalUrl
+  }, [event.id])
+  
+  // Set cached image source once
+  useEffect(() => {
+    if (event.imageUrl && !cachedImageSrc) {
+      const src = getImageSrc(event.imageUrl)
+      setCachedImageSrc(src)
+    }
+  }, [event.imageUrl, cachedImageSrc, getImageSrc])
   
   const handleImageError = useCallback(() => {
     console.log(`❌ FINAL ERROR: Event ${event.id} - ${event.imageUrl}`)
@@ -136,20 +161,14 @@ const EventCard = memo(function EventCard({ event, category, isFavorite, onFavor
     >
       <div className="flex">
         <div className="relative w-28 sm:w-32 h-28 sm:h-28 flex-shrink-0 p-1.5">
-          {event.imageUrl && !imageError ? (
+          {event.imageUrl && !imageError && cachedImageSrc ? (
             <img
-              key={`domain-${event.id}-${Date.now()}`}
-              src={getImageSrc(event.imageUrl)}
+              key={`cached-${event.id}`}
+              src={cachedImageSrc}
               alt={event.title}
               className="w-full h-full object-cover rounded-lg"
-              onLoad={() => {
-                console.log(`✅ FINAL SUCCESS: Event ${event.id} - ${event.imageUrl}`)
-                setImageError(false)
-              }}
-              onError={() => {
-                console.log(`❌ FINAL ERROR: Event ${event.id} - ${event.imageUrl}`)
-                setImageError(true)
-              }}
+              onLoad={handleImageLoad}
+              onError={handleImageError}
             />
           ) : (
             <div 
